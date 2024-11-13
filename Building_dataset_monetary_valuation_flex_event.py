@@ -24,9 +24,9 @@ potential_ab9             = pd.read_csv(path + "df_hourly_energy_reduction_bin_4
 
 # External datasets
 
-dam_prices_data           = pd.read_csv(path + "/Data/" + "DAM_prices.csv", delimiter = ",", dtype={3: str}, encoding='utf-8')
+dam_prices_data           = pd.read_csv(path + "DAM_prices.csv", delimiter = ",", dtype={3: str}, encoding='utf-8')
 
-weather_data = pd.read_csv(path + "/Data/" + "synop_data.csv", delimiter = ",", dtype={3: str}, encoding='utf-8')
+weather_data = pd.read_csv(path + "synop_data.csv", delimiter = ",", dtype={3: str}, encoding='utf-8')
 
 ##### Data cleaning and prepataion
 
