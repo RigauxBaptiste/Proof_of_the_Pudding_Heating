@@ -1,5 +1,6 @@
 # Proof_of_the_Pudding_Heating
 Repository for data and code for Rigaux, Hamels and Ovaere (2024). "The Proof of the Pudding is in the Heating: a Field Experiment on Household Engagement with Heat Pump Flexibility"
+Contact: baptiste.rigaux@ugent.be
 
 ## Data:
 - 'experiment_data.zip': ZIP archive of the heat pump data recorded throughout the field experiment. Extract to obtain 'experiment_data.dta' file in a Stata format. 
@@ -16,4 +17,3 @@ Repository for data and code for Rigaux, Hamels and Ovaere (2024). "The Proof of
 - Three .tex files corresponding to the three panels of Table 1 (further formatted in the paper).
 - Command results, corresponding to elements explained in the text (e.g., t-test results), are displayed directly in the console when they appear in 'Stata_code.do'.
 
-Contact: baptiste.rigaux@ugent.be
