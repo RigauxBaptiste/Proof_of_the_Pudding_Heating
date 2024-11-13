@@ -15,7 +15,7 @@ import pandas as pd
 import datetime
 
 # Defining the directories
-path = "C:/Users/brigaux/OneDrive - UGent/Desktop/FlexSys Analysis/Replication/"
+path = "C:/Users/"
 
 potential_bel3            = pd.read_csv(path + "df_hourly_energy_reduction_bin_1.csv", delimiter = ",", dtype={3: str}, encoding='utf-8')
 potential_b36             = pd.read_csv(path + "df_hourly_energy_reduction_bin_2.csv", delimiter = ",", dtype={3: str}, encoding='utf-8')
