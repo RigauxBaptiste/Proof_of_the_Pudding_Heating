@@ -15,3 +15,5 @@ Repository for data and code for Rigaux, Hamels and Ovaere (2024). "The Proof of
 - The paper figures (incl. appendices) as PDF files.
 - Three .tex files corresponding to the three panels of Table 1 (further formatted in the paper).
 - Command results, corresponding to elements explained in the text (e.g., t-test results), are displayed directly in the console when they appear in 'Stata_code.do'.
+
+Contact: baptiste.rigaux@ugent.be
