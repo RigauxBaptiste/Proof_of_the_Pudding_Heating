@@ -6,6 +6,8 @@
 *         ° Department of Economics, Ghent University (Belgium)                *
 ********************************************************************************
 
+* Stata version 18.0
+
 * Stata replication file for the paper figures and tables, incl. appendices
 
 clear
