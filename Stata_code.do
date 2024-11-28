@@ -37,15 +37,14 @@ F9_hist_temp_drop // Figure 9
 Study_manual_overrules // Comment in the text: timing of manual overrules + evidence of few manual overrules later in the heating season
 // Appendices: 
 App_F10_hist_pow_temp 
-App_F11_pow_profile_all
+App_F11_pow
 App_F12_pow_profile_temp
-App_F13_temp_flex_event
+App_F13_share_of_HPs
 App_T4_HS_temp
-App_T5_sample_composition /
+App_T5_sample_composition
 App_F16_random_inter 
 App_T6_T7_manual_over
 App_T8_reg_rebound_kWh
-App_F17_share_of_HPs
 end
 
 run_all // uncomment this line to run the whole program 
