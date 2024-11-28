@@ -5,7 +5,8 @@ Contact: baptiste.rigaux@ugent.be
 
 ## Data:
 - 'experiment_data.zip': ZIP archive of the heat pump data recorded throughout the field experiment. Extract to obtain 'experiment_data.dta' file in a Stata format. 
-- 'presurvey.dta': Stata formatted file containing the presurvey data on participating households.
+- 'presurvey_data.dta': Stata formatted file containing the presurvey data on participating households.
+- 'postsurvey_data.dta': Stata formatted file containing the postsurvey data on participating households.
 - 'synop_data.zip': ZIP archive of the weather data corresponding to the experimental period and collected from Royal Meteorological Institute of Belgium (https://www.meteo.be/en/belgium). Extract to obtain 'synop_data.csv'. See 'ReadMe_synop_data.txt' for more info.
 - 'DAM_prices.csv': CSV file containing the day-ahead electricity prices for Belgium and across the experimental period, collected from ENTSO-E Transparency Platform (https://transparency.entsoe.eu). See 'ReadMe_DAM_prices.txt' for more info.
 
