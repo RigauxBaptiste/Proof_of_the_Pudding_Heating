@@ -31,17 +31,18 @@ F2_pow_temp_profiles // Figure 2 (both panels)
 F3_histogram_kWh_saved // Figure 3
 F4_rebound_post_inter // Figure 4 (both panels)
 F5_6_pow_cons_during_event // Figure 5 (both panels) and Figure 6
-F7_8_flex_event_temp // Figure 7 (all panels) and Figure 8 
-F9_both_panels // Figure 9 (both panels) ; using the dataset built from the Python code
-Study_manual_overrules // Comment in the text: evidence of few manual overrules later in the heating season
+F7_flex_event_temp // Figure 7 (all panels) and Figure 8 
+F8_both_panels // Figure 9 (both panels) ; using the dataset built from the Python code
+F9_hist_temp_drop // Figure 9
+Study_manual_overrules // Comment in the text: timing of manual overrules + evidence of few manual overrules later in the heating season
 // Appendices: 
 App_F10_hist_pow_temp 
 App_F11_pow_profile_all
 App_F12_pow_profile_temp
 App_F13_temp_flex_event
 App_T4_HS_temp
-App_T5_sample_composition // (Data for) Table 5
-App_F16_random_inter // Figures 
+App_T5_sample_composition /
+App_F16_random_inter 
 App_T6_T7_manual_over
 App_T8_reg_rebound_kWh
 App_F17_share_of_HPs
@@ -798,8 +799,6 @@ capture drop sem_cf_hp_p_spec
         gen ul_cf_hp_p_spec = avg_cf_hp_p_spec + 1.96 * sem_cf_hp_p_spec
         gen ll_cf_hp_p_spec = avg_cf_hp_p_spec - 1.96 * sem_cf_hp_p_spec
 
-        drop sem_cf_hp_p_spec
-
         tempfile counterfactuals
         save `counterfactuals', replace
     restore
@@ -809,6 +808,33 @@ capture drop sem_cf_hp_p_spec
     drop _merge
 		
 sort hh_id time
+save data_prepared, replace
+
+
+// Counterfactual indoor temperature
+capture drop avg_cf_t_in_spec
+capture drop sem_cf_t_in_spec
+
+    // Calculating the counterfactual power (specific to each HP and time of day, excluding observations that are too close to the start/end of an intervention)
+    preserve
+        collapse (mean) avg_cf_t_in_spec = t_in (semean) sem_cf_t_in_spec = t_in, by(hh_id five_min_level_int intervention_dummy excl_from_cf)
+
+        drop if intervention_dummy == 1
+        drop if excl_from_cf == 1 & intervention_dummy == 0
+
+        gen ul_cf_t_in_spec = avg_cf_t_in_spec + 1.96 * sem_cf_t_in_spec
+        gen ll_cf_t_in_spec = avg_cf_t_in_spec - 1.96 * sem_cf_t_in_spec
+
+        tempfile counterfactuals
+        save `counterfactuals', replace
+    restore
+
+    // Matching the counterfactual with the original dataset 
+    merge m:1 hh_id five_min_level_int using `counterfactuals'
+    drop _merge
+    
+sort hh_id time
+
 save data_prepared, replace
 
 end
@@ -863,6 +889,30 @@ sort hh_id time
     sum total_duration_int_hour if reason_stop == -1, d
     sum total_duration_int_hour if reason_stop != 0, d
 
+// Text: t-tests comparisons of the duration by reason_stop 
+
+capture drop reason_stop_group
+capture drop group_* 
+capture drop by_*
+
+// Pooling manual and preemptive manual overrules
+gen reason_stop_group = reason_stop if reason_stop != -1 & reason_stop != -2 & reason_stop != 0
+
+* Manual overrules vs DHW temp threshold
+gen group_1 = reason_stop != -1 & reason_stop != 0
+gen by_1 = reason_stop == -2
+ttest total_duration_int_hour if group_1, by(by_1) une
+
+* Manual overrules vs Indoor temp threshold
+gen group_2 = reason_stop != -2 & reason_stop != 0
+gen by_2 = reason_stop == -1
+ttest total_duration_int_hour if group_2, by(by_2) une
+
+* DHW temp threshold vs Indoor temp threshold
+gen group_3 = reason_stop == -1 | reason_stop == -2
+gen by_3 = reason_stop == -1
+ttest total_duration_int_hour if group_3, by(by_3) une
+	
 end
 
 ********************************************************************************
@@ -874,6 +924,12 @@ program define F1_histogram_duration
 
 use data_prepared, clear
 sort hh_id time
+
+// Text:
+
+tab total_duration_int_hour if reason_stop != 0
+
+// Figure preparation: 
 
 qui sum total_duration_int_hour if reason_stop != 0
 local avg_duration_int = r(mean)
@@ -907,6 +963,13 @@ gen constant = 1
 
 gen t_dhw_0_notdec_geq_40 = t_dhw_0 * (1 - decoupled) * (t_dhw_0 >= 40)
 gen t_dhw_0_dec = t_dhw_0 * decoupled
+
+// Text:
+
+ci means t_dhw_0_notdec_geq_40 if reason_stop != 0 & t_dhw_0_notdec_geq_40 != 0
+ci means t_dhw_0_dec if reason_stop != 0 & t_dhw_0_dec != 0
+
+// Regression: 
 
     // Without HH-FE
 
@@ -1003,9 +1066,9 @@ sort hh_id time
 				|| rarea ul_avg_t_in_5min_control_smooth ll_avg_t_in_5min_control_smooth five_min_level_int, sort  fcolor(green%30) lcolor(green%0) ///
 				|| lpoly t_in five_min_level_int if intervention_dummy == 1, clcolor(blue) degree(0) ///
 				|| rarea ul_avg_t_in_5min_inter_smooth ll_avg_t_in_5min_inter_smooth five_min_level_int, sort fcolor(blue%30) lcolor(blue%0) ///
-				aspectratio(1) xlabel(0 "0" 72 "6" 144 "12" 216 "18" 288 "24") xtitle("Hour of the day") ///
-				ylabel(19.8(0.2)21) ytitle("Average indoor temperature (°C)") ///
-				legend(order(1 "Control" 2 "95% CI" 3 "Intervention" 4 "95% CI") cols(2) pos(6) size(medsmall))  graphregion(color(white) margin(zero))  xsize(8) ysize(8) 
+				aspectratio(1) xlabel(0 "0" 72 "6" 144 "12" 216 "18" 288 "24") xtitle("Time of day (h)") ///
+				ylabel(19.8(0.2)21) ytitle("Average indoor temperature" "across the sample  (°C)") ///
+				legend(order(1 "Non-intervention" 2 "95% CI" 3 "Intervention" 4 "95% CI") cols(2) pos(6) size(medsmall))  graphregion(color(white) margin(zero))  xsize(8) ysize(8) 
 
 			graph export "Figure2_left.pdf", width(8) height(8) replace
 
@@ -1019,9 +1082,9 @@ sort hh_id time
 	wildbootstrap reg hp_p intervention_dummy i.hh_id, cluster(hh_id) rseed(42) reps(100000) // Household-fixed effects
 
 	// Plot Fig. 2
-
+	
 	preserve
-
+	
 		// Collapse of hp_p on five_min_level_int, intervention_dummy, decoupled and excl_from_cf (to exclude these observations from the counterfactual)
 		collapse (mean) hp_p (semean) sem_hp_p = hp_p, by(five_min_level_int intervention_dummy excl_from_cf decoupled) 
 		sort intervention_dummy five_min_level_int
@@ -1063,9 +1126,9 @@ sort hh_id time
 				|| rarea ul_avg_hp_p_5min_control_smooth ll_avg_hp_p_5min_control_smooth five_min_level_int, sort  fcolor(green%30) lcolor(green%0) ///
 				|| lpoly hp_p five_min_level_int if intervention_dummy == 1, clcolor(blue) degree(0) ///
 				|| rarea ul_avg_hp_p_5min_inter_smooth ll_avg_hp_p_5min_inter_smooth five_min_level_int, sort fcolor(blue%30) lcolor(blue%0) ///
-				aspectratio(1) xlabel(0 "0" 72 "6" 144 "12" 216 "18" 288 "24") xtitle("Hour of the day") ///
-				ylabel(0(100)600) ytitle("Average indoor temperature (°C)") ///
-				legend(order(1 "Control" 2 "95% CI" 3 "Intervention" 4 "95% CI") cols(2) pos(6) size(medsmall))  graphregion(color(white) margin(zero))  xsize(8) ysize(8) 
+				aspectratio(1) xlabel(0 "0" 72 "6" 144 "12" 216 "18" 288 "24") xtitle("Time of day (h)") ///
+				ylabel(0(100)600) ytitle("Average HP power consumption" "across non-decoupled HPs (W)") ///
+				legend(order(1 "Non-intervention" 2 "95% CI" 3 "Intervention" 4 "95% CI") cols(2) pos(6) size(medsmall))  graphregion(color(white) margin(zero))  xsize(8) ysize(8) 
 
 			graph export "Figure2_right.pdf", replace
 
@@ -1124,14 +1187,15 @@ sort hh_id time
 	
 // Analysis of the energy consumption saved during the intervention
 
-ci means energy_saved_int if reason_stop != 0
+ci means energy_saved_int if reason_stop != 0 // Represents only part of the variability, across the means. But ignores the variability on the CF, leading to variability in each mean. 
+pwcorr energy_saved_int total_duration_int_hour if reason_stop != 0, obs sig star(0.05)
 
 qui sum energy_saved_int if reason_stop != 0
 local avg_energy_shift_spec = r(mean)
 
 // Fig. 3: histogram of the consumption decrease
 
-twoway hist energy_saved_int if reason_stop != 0 & energy_saved_int < 15, width(0.5) aspectratio(1) xtitle("Amount of electricity consumption" "reduction by the intervention (kWh)") xlabel(0(2.5)15) color(blue%35) ///
+twoway hist energy_saved_int if reason_stop != 0 & energy_saved_int < 15, width(0.5) aspectratio(1) xtitle("Average electricity consumption reduction (kWh)" "during interventions") xlabel(0(2.5)15) color(blue%35) ///
 	 graphregion(color(white) margin(zero))  xsize(5) ysize(5) xline(`avg_energy_shift_spec', lcolor(edkblue) lwidth(1.5 pt)) 
 
 graph export "Figure3.pdf", replace
@@ -1144,6 +1208,7 @@ end
 
 program define F4_rebound_post_inter
 // This program plots both panels of Fig. 4
+// Standard errors are derived from the variability of the mean quantity at each bin for time after intervention stop (at the 5 min-level); i.e. does not fully account for the autocorrelation structure in the errors, nor the intra-household variability. 
 
 use data_prepared, clear
 sort hh_id time
@@ -1198,10 +1263,16 @@ sort hh_id time
 	
 // Quantification of the rebound energy consumption (kWh)
 
+di "***** Rebound energy consumption (in kWh, right panel):"
+
+di "Within the first 8 hours:"
 ci means energy_rebound_after_int if time_diff_from_end_5min == 480 // 8 hours
+di "Within the first 16 hours:"
 ci means energy_rebound_after_int_16h // 16 hours
 
 // Quantification of the rebound power consumption (W)
+
+di "***** Rebound power consumption (in W, left panel):"
 
 di "Within the first 1/2 hour:"
 ci means power_rebound_after_int if time_diff_from_end_5min <= 30 // 1/2 hour
@@ -1227,7 +1298,7 @@ preserve
     gen ul = energy_rebound_after_int + 1.96 * sem_energy_rebound
     gen ll = energy_rebound_after_int - 1.96 * sem_energy_rebound
 
-    // Smoothing of the UL and LL (the BW comes from the local polynomial smoothing of the average)
+    // Smoothing of the UL and LL 
 
         capture drop ul_energy_rebound_smooth
         capture drop ll_energy_rebound_smooth
@@ -1240,8 +1311,8 @@ preserve
     twoway lpoly energy_rebound_after_int time_diff_from_end_5min if time_diff_from_end_5min <= 960, clcolor(orange) degree(0) ///
          || rarea ul_energy_rebound_smooth ll_energy_rebound_smooth time_diff_from_end_5min if time_diff_from_end_5min <= 960, sort fcolor(orange%30) lcolor(orange%0) ///
         aspectratio(1) ytitle("Average post-intervention" "electricity consumption increase (kWh)") ylabel(0(0.5)3.5) ///
-        xtitle("Hour after the intervention stop (h)") xlabel(0 "0" 120 "2" 240 "4" 360 "6" 480 "8" 600 "10" 720 "12" 840 "14" 960 "16") ///
-        legend(order(1 "Average (over HPs and interventions)" 2 "95% CI") cols(2) pos(6) size(small)) graphregion(color(white) margin(zero))  xsize(8) ysize(8)  
+        xtitle("Time to intervention stop (h)") xlabel(0 "0" 120 "2" 240 "4" 360 "6" 480 "8" 600 "10" 720 "12" 840 "14" 960 "16") ///
+        legend(order(1 "Average (across interventions)" 2 "95% CI") cols(2) pos(6) size(small)) graphregion(color(white) margin(zero))  xsize(8) ysize(8)  
 
     graph export "Figure4_right.pdf", width(8) height(8) replace
 
@@ -1262,7 +1333,7 @@ preserve
     gen ul = power_rebound_after_int + 1.96 * sem_power_rebound
     gen ll = power_rebound_after_int - 1.96 * sem_power_rebound
 
-    // Smoothing of the UL and LL (the BW comes from the local polynomial smoothing of the average)
+    // Smoothing of the UL and LL
 
         capture drop ul_power_rebound_smooth
         capture drop ll_power_rebound_smooth
@@ -1274,9 +1345,9 @@ preserve
 
     twoway lpoly power_rebound_after_int time_diff_from_end_5min if time_diff_from_end_5min <= 960, clcolor(orange) degree(0) ///
         || rarea ul_power_rebound_smooth ll_power_rebound_smooth time_diff_from_end_5min if time_diff_from_end_5min <= 960, sort fcolor(orange%30) lcolor(orange%0)  ///
-        aspectratio(1) xlabel(0 "0" 120 "2" 240 "4" 360 "6" 480 "8" 600 "10" 720 "12" 840 "14" 960 "16") xtitle("Hour after the intervention stop (h)") ///
+        aspectratio(1) xlabel(0 "0" 120 "2" 240 "4" 360 "6" 480 "8" 600 "10" 720 "12" 840 "14" 960 "16") xtitle("Time to intervention stop (h)") ///
         ylabel(-100(100)900) ytitle("Average post-intervention" "power consumption increase (W)") yline(0) ///
-        legend(order(1 "Average (over HPs and interventions)" 2 "95% CI") cols(2) pos(6) size(small)) graphregion(color(white) margin(zero))  xsize(8) ysize(8)  
+        legend(order(1 "Average (across interventions)" 2 "95% CI") cols(2) pos(6) size(small)) graphregion(color(white) margin(zero))  xsize(8) ysize(8)  
 
 graph export "Figure4_left.pdf", replace
 
@@ -1383,7 +1454,7 @@ preserve
         || rarea UL_cf_sm LL_cf_sm five_min_level_elapsed if (before == 1 | after == 1), sort fcolor(green%30) lcolor(green%0) ///
         aspectratio(1) xline(0, lwidth(thin) lcolor(gray)) xlabel(-360 "-6" 0 "0" 360 "6" 720 "12" 1080 "18" 1440 "24" 1800 "30" 2160 "36" 2520 "42" 2880 "48") xtitle("Time to flexibility event start (h)") ///
         ylabel(0(100)600) ytitle("Average HP power in the fleet (W)") ///
-        legend(order(1 "Intervention" 3 "95% CI" 5 "Control" 6 "95% CI" ) cols(2) pos(6) size(small)) ///
+        legend(order(1 "Average across interventions" 3 "95% CI" 5 "Control" 6 "95% CI" ) cols(2) pos(6) size(small)) ///
         graphregion(color(white) margin(zero)) xsize(8) ysize(8) 
 
     // Export the plot
@@ -1433,7 +1504,7 @@ preserve
     twoway lpoly power_reduction five_min_level_elapsed, bw(`bw_power') clcolor(orange) yline(0) ///
         || rarea ul_power_reduction_sm ll_power_reduction_sm five_min_level_elapsed, sort color(orange%30) lcolor(orange%0) ///
        xlabel(0 "0" 360 "6" 720 "12" 1080 "18" 1440 "24" 1800 "30" 2160 "36" 2520 "42" 2880 "48") ylabel(-200(50)300) ///
-        xtitle("Time to flexibility event start (h)") ytitle("Average HP power reduction in the fleet (W)") legend(order(1 "Average (over all HPs)" 2 "95% CI" ) cols(2) pos(6) size(small)) ///
+        xtitle("Time to flexibility event start (h)") ytitle("Average HP power reduction in the fleet (W)") legend(order(1 "Average across interventions" 2 "95% CI" ) cols(2) pos(6) size(small)) ///
         graphregion(color(white) margin(zero)) xsize(8) ysize(8)
 
     // Export the plot
@@ -1444,6 +1515,8 @@ preserve
 ci means power_reduction if five_min_level_elapsed <= 60 // 1 hours
 ci means power_reduction if five_min_level_elapsed <= 1080 // 18 hours
 ci means power_reduction if five_min_level_elapsed > 1080 & five_min_level_elapsed <= 2160 // From 18h to 36h (fleet-rebound period)
+
+sum power_reduction if five_min_level_elapsed > 1080 & five_min_level_elapsed <= 2160 // From 18h to 36h (fleet-rebound period)
 
 // Plot Fig. 6 
 
@@ -1506,8 +1579,8 @@ ci means power_reduction if five_min_level_elapsed > 1080 & five_min_level_elaps
     twoway lpoly cumulative_net_energy_saved five_min_level_elapsed, lcolor(orange) degree(0) ///
          || rarea ul_cumul_net_energy_saved_sm ll_cumul_net_energy_saved_sm five_min_level_elapsed if five_min_level_elapsed > 0, sort fcolor(orange%30) lcolor(orange%0)  ///
         xlabel(0 "0" 360 "6" 720 "12" 1080 "18" 1440 "24" 1800 "30" 2160 "36" 2520 "42" 2880 "48") xtitle("Time to flexibility event start (h)") ///
-        ytitle("Average amount of electricity consumption" "saved per HP in a fleet (kWh)") ylabel(-2.5(0.5)5) yline(0) legend(pos(6)) yline(0) xline(1080, lcolor(dkorange) lp(dash_dot)) xline(2160, lcolor(dkorange) lp(dash_dot)) ///
-        legend(order(1 "Average (over all HPs)" 2 "95% CI") cols(2) pos(6) size(small)) ////
+        ytitle("Average electricity consumption" "reduction per HP in the fleet (kWh)") ylabel(-2.5(0.5)5) yline(0) legend(pos(6)) yline(0) xline(1080, lcolor(dkorange) lp(dash_dot)) xline(2160, lcolor(dkorange) lp(dash_dot)) ///
+        legend(order(1 "Average across interventions" 2 "CI") cols(2) pos(6) size(small)) ////
         graphregion(color(white) margin(zero))  xsize(8) ysize(8) 
 
     // Export the plot
@@ -1518,8 +1591,9 @@ restore
 end
 
 ********************************************************************************
-* Figure 7 and potentially 8										           *
+* Figure 7                   										           *
 ********************************************************************************
+
 program plot_flex_event_power_profile
 // Program for the plot of the observed and counterfactual power profiles during a flexibility event 
 
@@ -1593,11 +1667,11 @@ program plot_flex_event_power_profile
 		|| rarea UL_cf_sm LL_cf_sm five_min_level_elapsed if (before == 1 | after == 1) & event_bin == `bin_value', sort fcolor(green%30) lcolor(green%0) ///
 		aspectratio(1) xline(0, lwidth(thin) lcolor(gray)) xlabel(-360 "-6" 0 "0" 360 "6" 720 "12" 1080 "18" 1440 "24" 1800 "30" 2160 "36" 2520 "42" 2880 "48" ) ///
 		xtitle("Time to flexibility event start (h)") ylabel(0(100)1500) ytitle("Average HP power in the fleet (W)") ///
-		legend(order(1 "Flexibility event" 3 "95% CI" 5 "Control" 6 "95% CI" ) cols(2) pos(6) size(small)) ///
+		legend(off) ///
 		graphregion(color(white) margin(zero)) xsize(8) ysize(8) 
 
 	// Export the plot
-	graph export "Figure15_`bin_value'.pdf", replace
+	graph export "FigureA14_`bin_value'.pdf", replace
 
 	// Clean up variables
 	drop UL_cf_sm LL_cf_sm UL_sm_before LL_sm_before UL_sm_after LL_sm_after
@@ -1638,15 +1712,15 @@ program plot_flex_event_power_reduction
 		graphregion(color(white) margin(zero)) xsize(8) ysize(8)
 
 	// Export the plot
-	graph export "Figure7_`bin_value'.pdf", replace
+	graph export "FigureA15_`bin_value'.pdf", replace
 
 	// Clean up variables
 	drop ul_power_reduction_sm ll_power_reduction_sm
 
 end
 
-program define F7_8_flex_event_temp
-// This program plots all panels of Fig. 7 and Fig. 8
+program define F7_flex_event_temp
+// This program plots all panels of Fig. 7
 
 use data_prepared, clear
 sort hh_id time
@@ -1791,12 +1865,12 @@ preserve
         || lpoly cumulative_net_energy_saved five_min_level_elapsed if event_bin == 2, degree(0) lcolor("75 220 227") ///
         || lpoly cumulative_net_energy_saved five_min_level_elapsed if event_bin == 3, degree(0) lcolor("255 213 18") ///
         || lpoly cumulative_net_energy_saved five_min_level_elapsed if event_bin == 4, degree(0) lcolor("245 59 59")  ///
-        legend(order(1 "< 3°C" 2 "3 - 6 °C" 3 "6 - 9 °C" 4 "> 9 °C") size(small) pos(6) cols(2) subtitle("Average outdoor temperature within 18h" "after flexibility event start", size(small))) ///
-        xlabel(0 "0" 360 "6" 720 "12" 1080 "18" 1440 "24" 1800 "30" 2160 "36" 2520 "42" 2880 "48") xtitle("Time since flexibility event start (hours)") ///
-        ylabel(0(0.5)5) ytitle("Average net electricity consumption" "reduction per HP in the fleet (kWh)") yline(0) ///
+        legend(order(1 "< 3°C" 2 "3 - 6 °C" 3 "6 - 9 °C" 4 "> 9 °C") size(small) pos(6) cols(2) subtitle("Average outdoor temperature within 18 h" "after flexibility event start", size(small))) ///
+        xlabel(0 "0" 360 "6" 720 "12" 1080 "18" 1440 "24" 1800 "30" 2160 "36" 2520 "42" 2880 "48") xtitle("Time to flexibility event start (h)") ///
+        ylabel(0(0.5)5) ytitle("Average electricity consumption" "reduction per HP in the fleet (kWh)") yline(0) ///
         aspectratio(1) graphregion(color(white) margin(zero)) xsize(8) ysize(8)
 
-    graph export "Figure7_new.pdf", replace
+    graph export "Figure7.pdf", replace
 
     // Extracting the amount of electricity saved (in kWh) in each hour of the flexibility event for the price analysis
 
@@ -1813,11 +1887,11 @@ restore
 end
 
 ********************************************************************************
-* Figure 9										           *
+* Figure 8										                               *
 ********************************************************************************
 
-program define F9_both_panels
-// This program plots all panels of Fig. 7 and Fig. 8
+program define F8_both_panels
+// This program plots all panels of Fig. 8
 
 // Preamble
 
@@ -1831,27 +1905,18 @@ import delimited "money_shifted_heterogeneous.csv", clear // Output from 'Buildi
 
 drop if temp_heterogeneity_category == "nan"
 
-pwcorr dam_price temp, sig star(0.05)
+drop if missing(phase2_avg_money) // Too far into the season, last observations do not even have 36h after the start.
 
-// Figure 8 - left  
+// Text:
 
-    sum phase1_avg_money
-    local phase1_avg_money_mean = r(mean)
-    sum phase2_avg_money
-    local phase2_avg_money_mean = r(mean)
+ci means phase1_avg_money
+ci means phase2_avg_money
 
-    // Set optimal range and bin width
-    twoway (hist phase1_avg_money if phase1_avg_money < 2.1,  density width(0.2) color(blue%35) ) ///        
-           (hist phase2_avg_money if phase2_avg_money < 2.1,  density width(0.2) color(orange%35) ) , ///   
-           legend(order(1 "18h after flexibility event start" 2 "36h after flexibility event start" ) size(medsmall) cols(1) pos(6)) /// 
-           xline(`phase1_avg_money_mean', lcolor(blue) lwidth(1.5 pt)) /// 
-           xline(`phase2_avg_money_mean', lcolor(orange) lwidth(1.5 pt)) /// 
-           graphregion(color(white) margin(zero)) /// 
-           xsize(5) ysize(5) xlabel(-0.6(0.2)2.1) xtitle("Average money savings per HP and flexibility event" "in the fleet - with day-ahead prices (€)")
-
-    // Export the graph
-    graph export "Figure8_B_left.pdf", replace
-
+pwcorr dam_price temp if temp_heterogeneity_category == "bel3", sig star(0.05)
+pwcorr dam_price temp if temp_heterogeneity_category == "b36", sig star(0.05)
+pwcorr dam_price temp if temp_heterogeneity_category == "b69", sig star(0.05)
+pwcorr dam_price temp if temp_heterogeneity_category == "ab9", sig star(0.05)
+	
 // Figure 8 - right 
 
     preserve
@@ -1871,7 +1936,7 @@ pwcorr dam_price temp, sig star(0.05)
     replace dam_bin = 0.40 if avg_dam_on_36h >= 0.375 & avg_dam_on_36h < 0.425
     replace dam_bin = 0.45 if avg_dam_on_36h >= 0.425 & avg_dam_on_36h < 0.475
     replace dam_bin = 0.50 if avg_dam_on_36h >= 0.475 & avg_dam_on_36h <= 0.525
-
+	
     ci means phase1_avg_money if dam_bin == 0.5
     ci means phase2_avg_money if dam_bin == 0.5
 
@@ -1896,19 +1961,24 @@ pwcorr dam_price temp, sig star(0.05)
         (rcap phase2_ll phase2_ul dam_bin, lcolor(orange)) ///
         (scatter phase1_avg_money dam_bin, color(blue)) ///
         (scatter phase2_avg_money dam_bin, color(orange) ///
-        ylabel(0(0.25)2) xlabel(0(0.05)0.5) ///
+        ylabel(0(0.25)2.25) xlabel(0(0.05)0.5) ///
         legend(order(1 "18 h after flexibility event start" 2 "36 h after flexibility event start") pos(6) size(medsmall)) aspectratio(1) ///
         xtitle("Average day-ahead price within 36 h" "after flexibility event start (€/kWh)") ///
         ytitle("Average savings per event" "and HP in the fleet (€)") graphregion(color(white) margin(zero)) xsize(8) ysize(8))
 
-    graph export "Figure8_B_right.pdf", replace
+    graph export "Figure8_right.pdf", replace
 
     restore
 
-// Figure XX: savings wrp to share of time
+// Figure 8 - left:
 
     capture drop rank*
     capture drop time_share*
+	
+	sum phase1_avg_money
+    local phase1_avg_money_mean = r(mean)
+    sum phase2_avg_money
+    local phase2_avg_money_mean = r(mean)
 
     // Calculate percentiles for phase1_avg_money and phase2_avg_money
     egen rank1 = rank(phase1_avg_money), unique
@@ -1921,23 +1991,38 @@ pwcorr dam_price temp, sig star(0.05)
     // Plot both phase1_avg_money and phase2_avg_money against their respective time shares
     twoway line phase1_avg_money time_share1, sort lcolor(blue) ///
         || line phase2_avg_money time_share2, sort lcolor(orange) ///
-        xlabel(0(10)100) ylabel(-0.5(0.25)2) yline(0) ///
-        xtitle("Share of time in HS1 and HS2 (%)") ytitle("Average net savings" "per event and HP in the fleet (€)") ///
-        legend(label(1 "18h after flexibility event start") label(2 "36h after flexibility event start") pos(6) size(medsmall) ) ///
-        aspectratio(1) graphregion(color(white) margin(zero)) xsize(8) ysize(8)
+        xlabel(0(10)100) ylabel(-0.5(0.25)2.25) yline(0) ///
+        xtitle("Share of time in HS1 and HS2 (%)") ytitle("Average savings" "per event and HP in the fleet (€)") ///
+        legend(label(1 "18 h after flexibility event start") label(2 "36 h after flexibility event start") pos(6) size(medsmall) ) ///
+        aspectratio(1) graphregion(color(white) margin(zero)) xsize(8) ysize(8) ///
+		yline(`phase1_avg_money_mean', lcolor(blue) lwidth(1.5 pt)) ///
+		yline(`phase2_avg_money_mean', lcolor(orange) lwidth(1.5 pt))
 
-    graph export "FigureX.pdf", replace
+    graph export "Figure8_left.pdf", replace
+	
+	// Text: 
+	
+	ci means phase2_avg_money if time_share2 >= 90
+	ci means phase2_avg_money if time_share2 >= 95
+	ci means phase2_avg_money if time_share2 >= 99
+	sum phase2_avg_money
+    sum phase2_avg_money if phase2_avg_money <= 0
 
-frame change default
+	keep if time_share2 >= 95 // Mostly Nov - Dec 2022: peak of energy crisis
+	
+	frame change default
 
 end
 
 ********************************************************************************
-* Figure 10: Histogram of temperature drop							           *
+* Figure 9: Histogram of temperature drop							           *
 ********************************************************************************
 
-program F10_hist_temp_drop 
-// This program plots Figure 10.
+program F9_hist_temp_drop 
+// This program plots Figure 9.
+
+use data_prepared, clear
+sort hh_id time
 
 frame change default
 
@@ -1953,7 +2038,14 @@ replace manually_overruled_during_int = 1 if reason_stop == -3
 capture drop temperature_drop 
 gen temperature_drop = t_in_0 - t_in
 
+// Correlations: 
+
+pwcorr temperature_drop t_in_0 total_duration_int_hour avg_temp_during_int if reason_stop == -1 | reason_stop == -2, sig star(0.05) obs
+
 ci means temperature_drop if reason_stop != 0 
+
+wildbootstrap reg temperature_drop manually_overruled_during_int i.hh_id if reason_stop != 0 & hh_id != 1 & hh_id != 2 & hh_id != 8 , cluster(hh_id) rseed(42) reps(100000) // Household-fixed effects
+
 
 // Testing whether temperature drop is higher for manually overruled interventions 
 
@@ -1975,7 +2067,7 @@ local avg_drop_manu = r(mean)
 
 twoway (hist temperature_drop if manually_overruled_during_int == 0 & temperature_drop > -1 & temperature_drop < 3.5, density width(0.25) start(-1) color(blue%35)) ///        
        (hist temperature_drop if manually_overruled_during_int == 1 & temperature_drop > -1 & temperature_drop < 3.5, density width(0.25) start(-1) color(orange%35)), ///   
-       legend(order(1 "Automatically stopped interventions (n = 228)" 2 "Manually overruled interventions (n = 45)") ///
+       legend(order(1 "Automatically stopped interventions (n = 240)" 2 "Manually overruled interventions (n = 46)") ///
        size(small) cols(1) pos(6)) xtitle("Temperature drop per intervention (°C)") xlabel(-1(0.5)3) ///
        xline(`avg_drop_auto', lwidth(medthin) lcolor(blue)) xline(`avg_drop_manu', lwidth(medthin) lcolor(orange)) ///
        aspectratio(1) xsize(8) ysize(8) graphregion(color(white) margin(zero))
@@ -1990,6 +2082,18 @@ program define Study_manual_overrules
 
 use data_prepared, clear
 sort hh_id time
+
+// Timing of manual overrules
+
+capture drop period_of_day_f
+
+gen period_of_day_f = 0 
+replace period_of_day_f = 1 if hourofday > 6 & hourofday <= 12
+replace period_of_day_f = 2 if hourofday > 12 & hourofday <= 18
+replace period_of_day_f = 3 if (hourofday > 18 & hourofday <= 23) | hourofday == 0 
+replace period_of_day_f = 4 if hourofday > 0 & hourofday <= 6 
+
+tab period_of_day_f if reason_stop == -3
 
 // Identification of the successive order in which interventions were experienced by households...
 capture drop intervention_consecutive_order*
@@ -2141,6 +2245,25 @@ capture drop intervention_consecutive_order*
 end
 
 ********************************************************************************
+* Section 4.3.3: post-experiment survey  							           *
+********************************************************************************
+
+program postexperiment_survey
+
+use postsurvey_data, clear 
+sort hh_id 
+
+sum comfort_t_in 
+sum comfort_t_dhw
+
+sum importance_notification
+sum importance_override
+
+tab strategy_discomfort
+
+end
+
+********************************************************************************
 * Appendices														           *
 ********************************************************************************
 
@@ -2159,7 +2282,7 @@ local avg_hp_p = r(mean)
 hist hp_p if intervention_dummy == 0 & hp_p <= 1500, width(50) xtitle("Heat pump power (W)")  note("In non-intervention and non-rebound periods.") xline(`avg_hp_p', lcolor(edkblue) lwidth(1.5 pt)) ///
  graphregion(color(white) margin(zero))  xsize(5) ysize(5) color(blue%35) xlabel(0(250)1500)
 
-graph export "Figure10_a.pdf", replace
+graph export "FigureA10_left.pdf", replace
 
 // Right panel: histogram of indoor temperature
 
@@ -2169,13 +2292,13 @@ local avg_t_in = r(mean)
 hist t_in if intervention_dummy == 0 & (hs1_window == 1 | hs2_window == 1) & t_in > 16 & t_in <= 26, width(.5) xtitle("Indoor temperature (°C)") note("In non-intervention and non-rebound periods.") xline(`avg_t_in', lcolor(edkblue) lwidth(1.5 pt)) ///
  graphregion(color(white) margin(zero))  xsize(5) ysize(5) color(blue%35) xlabel(16(1)26)
 
-graph export "Figure10_b.pdf", replace
+graph export "FigureA10_right.pdf", replace
 
 end
 
 * Fig. 11
 
-program define App_F11_pow_profile_all
+program define App_F11_pow
 
 use data_prepared, clear
 sort hh_id time
@@ -2220,11 +2343,11 @@ preserve
             || rarea ul_avg_hp_p_5min_control_smooth ll_avg_hp_p_5min_control_smooth five_min_level_int, sort  fcolor(green%30) lcolor(green%0) ///
             || lpoly hp_p five_min_level_int if intervention_dummy == 1, clcolor(blue) degree(0) ///
             || rarea ul_avg_hp_p_5min_inter_smooth ll_avg_hp_p_5min_inter_smooth five_min_level_int, sort fcolor(blue%30) lcolor(blue%0) ///
-            aspectratio(1) xlabel(0 "0" 72 "6" 144 "12" 216 "18" 288 "24") xtitle("Hour of the day") ///
-            ylabel(0(100)600) ytitle("Average indoor temperature (°C)") ///
-            legend(order(1 "Control" 2 "95% CI" 3 "Intervention" 4 "95% CI") cols(2) pos(6) size(medsmall))  graphregion(color(white) margin(zero))  xsize(8) ysize(8) 
+            aspectratio(1) xlabel(0 "0" 72 "6" 144 "12" 216 "18" 288 "24") xtitle("Time of day (h)") ///
+            ylabel(0(100)600) ytitle("Average HP power consumption (W)") ///
+            legend(order(1 "Non-intervention" 2 "95% CI" 3 "Intervention" 4 "95% CI") cols(2) pos(6) size(medsmall))  graphregion(color(white) margin(zero))  xsize(8) ysize(8) 
 
-        graph export "Figure11.pdf", replace
+        graph export "FigureA11.pdf", replace
 
 restore
 
@@ -2292,11 +2415,11 @@ preserve
         || rarea ul_cont_sm_bin3 ll_cont_sm_bin3 five_min_level_int, sort fcolor("255 213 18%30") lcolor("255 213 18%0") ///
         || lpoly hp_p five_min_level_int if cf_bin == 4, lcolor("245 59 59") degree(0) bw(`selected_BW_HP_P_ab9') ///
         || rarea ul_cont_sm_bin4 ll_cont_sm_bin4 five_min_level_int, sort fcolor("245 59 59%30") lcolor("245 59 59%30") ///
-        xlabel(0 "0" 72 "6" 144 "12" 216 "18" 288 "24") xtitle("Hour of the day") aspectratio(1) ///
-        ylabel(0(200)1200) ytitle("Average HP power (W)") ///
+        xlabel(0 "0" 72 "6" 144 "12" 216 "18" 288 "24") xtitle("Time of day (h)") aspectratio(1) ///
+        ylabel(0(200)1200) ytitle("Average HP power consumption (W)") ///
         legend(order(1 "< 3°C" 3 "3 to 6 °C" 5 "6 to 9 °C" 7 "> 9 °C") cols(2) pos(6) subtitle("Daily average outdoor temperature", size(medsmall)) size(medsmall))  graphregion(color(white) margin(zero))  xsize(8) ysize(8) 
 
-graph export "Figure12.pdf", replace
+graph export "FigureA12.pdf", replace
 
 restore
 
@@ -2304,131 +2427,114 @@ end
 
 * Fig. 13
 
-program define App_F13_temp_flex_event
+program define App_F13_share_of_HPs
+// This program plots Fig. 13
 
 use data_prepared, clear
 sort hh_id time
 
-// Counterfactual indoor temperature
-capture drop avg_cf_t_in_spec
-capture drop sem_cf_t_in_spec
+// Share of HPs in each state (blocked/unblocked) after a flexibility event is initiated
 
-    // Calculating the counterfactual power (specific to each HP and time of day, excluding observations that are too close to the start/end of an intervention)
     preserve
-        collapse (mean) avg_cf_t_in_spec = t_in (semean) sem_cf_t_in_spec = t_in, by(hh_id five_min_level_int intervention_dummy excl_from_cf)
 
-        drop if intervention_dummy == 1
-        drop if excl_from_cf == 1 & intervention_dummy == 0
+        keep if five_min_level_elapsed > 0 | after == 1
 
-        gen ul_cf_t_in_spec = avg_cf_t_in_spec + 1.96 * sem_cf_t_in_spec
-        gen ll_cf_t_in_spec = avg_cf_t_in_spec - 1.96 * sem_cf_t_in_spec
+        collapse (sum) intervention_dummy, by(five_min_level_elapsed)
 
-        drop sem_cf_t_in_spec
+        sum intervention_dummy
+        local max = r(max)
 
-        tempfile counterfactuals
-        save `counterfactuals', replace
+        replace intervention_dummy = intervention_dummy/`max'
+
+        gen normal_operation = 1 - intervention_dummy
+
+        twoway line intervention_dummy five_min_level_elapsed if five_min_level_elapsed < 2880 , sort lcolor(blue) ///
+            || line normal_operation five_min_level_elapsed if five_min_level_elapsed < 2880, sort lcolor(green) ///
+            aspectratio(1) xlabel(0 "0" 360 "6" 720 "12" 1080 "18" 1440 "24" 1800 "30" 2160 "36" 2520 "42" 2880 "48") xtitle("Time to flexibility event start (h)") ///
+            ytitle("Average share of HPs") graphregion(color(white) margin(zero))  xsize(8) ysize(8) legend(order(1 "Blocked" 2 "Unblocked" ) cols(2) pos(6) size(medsmall))
+
+        //graph export "Share_blocked_unblocked.pdf", replace
+
     restore
-
-    // Matching the counterfactual with the original dataset 
-    merge m:1 hh_id five_min_level_int using `counterfactuals'
-    drop _merge
-    sort hh_id time
 	
 preserve
 
-    // Collapse of the observed and HP-specific counterfactual power consumption on five_min_level_elapsed(5 min of intervention)
-    collapse (mean) t_in (semean) sem_t_in = t_in (mean) avg_cf_t_in_spec_fleet = avg_cf_t_in_spec (semean) se_cf_t_in_spec_fleet = avg_cf_t_in_spec, by(five_min_level_elapsed before after)
+keep if after == 1
 
-    // Constructing the 95% CI: reflecting the variability over the different HPs
-    capture drop ul 
-    capture drop ll 
-    capture drop ul_cf
-    capture drop ll_cf
+gen diff = hp_p - avg_cf_hp_p_spec
 
-    gen ul = t_in + 1.96 * sem_t_in
-    gen ll = t_in - 1.96 * sem_t_in
-   
-    gen ul_cf = avg_cf_t_in_spec_fleet + 1.96 * se_cf_t_in_spec_fleet
-    gen ll_cf = avg_cf_t_in_spec_fleet - 1.96 * se_cf_t_in_spec_fleet
+collapse (mean) diff (semean) sem_diff = diff, by(five_min_level_elapsed intervention_dummy)
 
-    // Calculate optimal BW for average intervention curve (t_in)
-    lpoly t_in five_min_level_elapsed if (before == 1 | after == 1), degree(0)
-    local bw_t_in = r(bwidth)
+gen ul_diff = diff + 1.96 * sem_diff
+gen ll_diff = diff - 1.96 * sem_diff
 
-    // Calculate the optimal BW for average control curve (cf_avg_bin_spec)
-    lpoly avg_cf_t_in_spec_fleet five_min_level_elapsed if (before == 1 | after == 1), degree(0)
-    local bw_cf = r(bwidth)
+// Smoothing the CI: 
 
-    // Smooth the CIs for the control curve using the BW calculated above
-    capture drop UL_cf_sm 
-    capture drop LL_cf_sm
-    capture drop at_values
+capture drop ul_diff_sm_block ll_diff_sm_block
+capture drop ul_diff_sm_unblock ll_diff_sm_unblock 
 
-    gen at_values = . 
-    replace at_values = five_min_level_elapsed if (before == 1 | after == 1) 
+//// Blocked:
 
-        // UL
-        lpoly ul_cf five_min_level_elapsed if !missing(at_values), at(at_values) gen(UL_cf_sm) degree(0) bw(`bw_cf')
+    // UL:
 
-        // LL
-        lpoly ll_cf five_min_level_elapsed if !missing(at_values), at(at_values) gen(LL_cf_sm) degree(0) bw(`bw_cf')
+    lpoly ul_diff five_min_level_elapsed if intervention_dummy == 1, gen(ul_diff_sm_block) at(five_min_level_elapsed) degree(0)
+    save temp_dataset, replace
+    merge m:m five_min_level_elapsed using temp_dataset, keepusing(ul_diff_sm_block)
+    drop _merge
 
-    drop at_values
+    // LL:
+ 
+    lpoly ll_diff five_min_level_elapsed if intervention_dummy == 1, gen(ll_diff_sm_block) at(five_min_level_elapsed) degree(0)
+    save temp_dataset, replace
+    merge m:m five_min_level_elapsed using temp_dataset, keepusing(ll_diff_sm_block)
+    drop _merge
 
-    // Smooth the CIs for the intervention curve using the BW calculated above
-    capture drop UL_sm_before 
-    capture drop LL_sm_before
-    capture drop UL_sm_after 
-    capture drop LL_sm_after
+//// Unblocked:
 
-        // Before: 
-        capture drop at_values
+    // UL:
 
-        gen at_values = . 
-        replace at_values = five_min_level_elapsed if before == 1
+    lpoly ul_diff five_min_level_elapsed if intervention_dummy == 0, gen(ul_diff_sm_unblock) at(five_min_level_elapsed) degree(0)
+    save temp_dataset, replace
+    merge m:m five_min_level_elapsed using temp_dataset, keepusing(ul_diff_sm_unblock)
+    drop _merge
 
-                // UL 
-                lpoly ul five_min_level_elapsed if !missing(at_values), at(at_values) gen(UL_sm_before) degree(0) bw(`bw_t_in')
+    // LL:
+ 
+    lpoly ll_diff five_min_level_elapsed if intervention_dummy == 0, gen(ll_diff_sm_unblock) at(five_min_level_elapsed) degree(0)
+    save temp_dataset, replace
+    merge m:m five_min_level_elapsed using temp_dataset, keepusing(ll_diff_sm_unblock)
+    drop _merge
 
-                // LL
-                lpoly ll five_min_level_elapsed if !missing(at_values), at(at_values) gen(LL_sm_before) degree(0) bw(`bw_t_in')
 
-        drop at_values
+// Plot: 
 
-        // After: 
-        capture drop at_values
+// Just the unblocked ones: 
 
-        gen at_values = . 
-        replace at_values = five_min_level_elapsed if after == 1
+twoway lpoly diff five_min_level_elapsed if intervention_dummy == 0, clcolor(green) ///
+    || rarea ul_diff_sm_unblock ll_diff_sm_unblock five_min_level_elapsed if intervention_dummy == 0, sort fcolor(green%30) lcolor(green%0) ///
+    aspectratio(1) xlabel(0 "0" 360 "6" 720 "12" 1080 "18" 1440 "24" 1800 "30" 2160 "36" 2520 "42" 2880 "48") xtitle("Time to flexibility event start (h)") ylabel(-300(100)450) yline(0, lwidth(thin) lcolor(gray))  ///
+    ytitle("Average energy consumption" "per event and HP in the fleet (W)") graphregion(color(white) margin(zero))  xsize(8) ysize(8) legend(order(1 "Average across unblocked heat pumps" "(all interventions)" ) cols(2) pos(6) size(medsmall))
 
-                // UL 
-                lpoly ul five_min_level_elapsed if !missing(at_values), at(at_values) gen(UL_sm_after) degree(0) bw(`bw_t_in')
+graph export "FigureA13.pdf", replace
 
-                // LL
-                lpoly ll five_min_level_elapsed if !missing(at_values), at(at_values) gen(LL_sm_after) degree(0) bw(`bw_t_in')
 
-        drop at_values
-
-// Plot Fig. 5 - left 
-
-    twoway ///
-        lpoly t_in five_min_level_elapsed if before == 1,  clcolor(blue)  bw(`bw_t_in') ///
-        || lpoly t_in five_min_level_elapsed if after == 1,  clcolor(blue)  bw(`bw_t_in') ///
-        || rarea UL_sm_before LL_sm_before five_min_level_elapsed if before == 1, sort fcolor(blue%30) lcolor(blue%0) ///
-        || rarea UL_sm_after LL_sm_after five_min_level_elapsed if after == 1, sort fcolor(blue%30) lcolor(blue%0) ///
-        || lpoly avg_cf_t_in_spec_fleet five_min_level_elapsed if (before == 1 | after == 1), clcolor(green) bw(`bw_cf') ///
-        || rarea UL_cf_sm LL_cf_sm five_min_level_elapsed if (before == 1 | after == 1), sort fcolor(green%30) lcolor(green%0) ///
-        aspectratio(1) xline(0, lwidth(thin) lcolor(gray)) xlabel(-360 "-6" 0 "0" 360 "6" 720 "12" 1080 "18" 1440 "24" 1800 "30" 2160 "36" 2520 "42" 2880 "48" ) xtitle("Time to flexibility event start (h)") ///
-        ylabel(20.2(0.1)20.9) ytitle("Average indoor temperature per" "household in the fleet (°C)") ///
-        legend(order(1 "Intervention" 3 "95% CI" 5 "Control" 6 "95% CI" ) cols(2) pos(6) size(small)) ///
-        graphregion(color(white) margin(zero)) xsize(8) ysize(8) 
-
-    // Export the plot
-    graph export "Figure13.pdf", replace
+// Intensity of rebound 
+di "Rebound (resp. first 18h, first 36h, between 18-36h)"
+ci means diff if intervention_dummy == 0 & five_min_level_elapsed < 1080 // First 18 hours 
+ci means diff if intervention_dummy == 0 & five_min_level_elapsed < 2160 // First 36 hours 
+ci means diff if intervention_dummy == 0 & five_min_level_elapsed > 1080 & five_min_level_elapsed < 2160 // Between 18 - 36 hours 
 
 restore
-
+	
 end
+
+* Fig 14
+
+// Comes from program 'plot_flex_event_power_profile' (see Fig. 7's program)
+
+* Fig 15
+
+// Comes from program 'plot_flex_event_power_reduction' (see Fig. 7's program)
 
 * Data for Table 4
 
@@ -2461,6 +2567,10 @@ program define App_T5_sample_composition
 use data_prepared, clear
 sort hh_id time
 
+// Who is decoupled? 
+
+tab hh_id decoupled
+
 // How many interventions for each HH? 
 
 qui levelsof hh_id, local(hh)
@@ -2477,6 +2587,50 @@ foreach label of local hh {
 
 di "Total unique values of unique_index (i.e. interventions) across all HHs: " `total_unique'
 
+// How many in HS1? 
+
+preserve
+
+keep if hs_index == 1
+
+qui levelsof hh_id, local(hh)
+
+local total_unique = 0
+
+qui foreach label of local hh {
+    qui distinct unique_index if hh_id == `label' & unique_index != 0 & reason_stop != 0 
+    local unique_count = r(ndistinct)
+    di "`label' has " `unique_count' " unique values of unique_index (i.e. interventions)"
+    
+    local total_unique = `total_unique' + `unique_count'
+}
+
+di "Total unique values of unique_index (i.e. interventions) across all HHs in HS1: " `total_unique'
+
+restore 
+
+// How many in HS2? 
+
+preserve
+
+keep if hs_index == 2
+
+qui levelsof hh_id, local(hh)
+
+local total_unique = 0
+
+qui foreach label of local hh {
+    qui distinct unique_index if hh_id == `label' & unique_index != 0 & reason_stop != 0 
+    local unique_count = r(ndistinct)
+    di "`label' has " `unique_count' " unique values of unique_index (i.e. interventions)"
+    
+    local total_unique = `total_unique' + `unique_count'
+}
+
+di "Total unique values of unique_index (i.e. interventions) across all HHs in HS2: " `total_unique'
+
+restore 
+
 end
 
 * Fig. 16 
@@ -2491,26 +2645,30 @@ twoway hist hourofday if intervention_dummy == 1 & intervention_dummy[_n-1] == 0
     xtitle("Hour of the day", size(medsmall)) color(blue%35) ///
     graphregion(color(white) margin(zero))  xsize(5) ysize(5) ylabel(0(10)80)
 
-graph export "Figure16_a.pdf", replace
+graph export "FigureA16_a.pdf", replace
 
 // Day of week
 twoway hist dow if intervention_dummy == 1 & intervention_dummy[_n-1] == 0, frequency discrete xlabel(0 "Mon" 1 "Tue" 2 "Wed" 3 "Thu" 4 "Fri" 5 "Sat" 6 "Sun") ///
     xtitle("Day of the week", size(medsmall)) color(blue%35) ///
     graphregion(color(white) margin(zero))  xsize(5) ysize(5) ylabel(0(10)80)    
 
-graph export "Figure16_b.pdf", replace
+graph export "FigureA16_b.pdf", replace
 
 // Indoor temperature threshold
 twoway hist t_threshold_0 if intervention_dummy == 1 & intervention_dummy[_n-1] == 0, frequency discrete xtitle("Indoor temperature threshold (°C)", size(medsmall)) /// 
     start(16) color(blue%35) ///
     graphregion(color(white) margin(zero))  xsize(5) ysize(5) ylabel(0(10)80)
 
-graph export "Figure16_c.pdf", replace
+graph export "FigureA16_c.pdf", replace
 
 // Correlation coefficients 
 pwcorr t_threshold_0 hourofday if intervention_dummy == 1 & intervention_dummy[_n-1] == 0, sig star(0.05) o
 pwcorr t_threshold_0 dow if intervention_dummy == 1 & intervention_dummy[_n-1] == 0, sig star(0.05) o
-pwcorr dow hourofday if intervention_dummy == 1 & intervention_dummy[_n-1] == 0, sig star(0.05) o
+pwcorr hourofday dow if intervention_dummy == 1 & intervention_dummy[_n-1] == 0, sig star(0.05) o
+
+pwcorr t_threshold_0 notif_0 if intervention_dummy == 1 & intervention_dummy[_n-1] == 0, sig star(0.05) o
+pwcorr dow notif_0 if intervention_dummy == 1 & intervention_dummy[_n-1] == 0, sig star(0.05) o
+pwcorr hourofday notif_0 if intervention_dummy == 1 & intervention_dummy[_n-1] == 0, sig star(0.05) o
 
 end
 
@@ -2711,124 +2869,27 @@ F4_rebound_post_inter
       stats(r2_a N, labels("Adj. R-Square" "N obs"))
       di "! The p-values reported by estout do not correspond to the bootstrapped p-values but to the original unclustered OLS ones. p-values derived from Wild bootstrap have to be entered manually, from the wildboostrap output tables directly."
 
-end
+// Other parametrization mentioned in the text:
 
-* Fig. 17 
+di "Other parametrizations mentioned in the text:"
 
-program define App_F17_share_of_HPs
-// This program plots Fig. 17
+	// No HH-FE:
 
-use data_prepared, clear
-sort hh_id time
+	capture drop T_DHW_f_dec 
+	capture drop T_DHW_f_non_dec 
 
-// Share of HPs in each state (blocked/unblocked) after a flexibility event is initiated
+	gen T_DHW_f_dec = T_DHW_f * decoupled
+	gen T_DHW_f_non_dec = T_DHW_f * (1-decoupled)
 
-    preserve
+	wildbootstrap reg energy_rebound_after_int_16h diff_set_f T_DHW_f_dec T_DHW_f_non_dec avg_t_out_within_16h morning_f evening_f night_f constant if time_diff_from_end_5min == 960, cluster(hh_id) rseed(42) reps(100000) hascons
 
-        keep if five_min_level_elapsed > 0 | after == 1
+	ci means T_DHW_f_non_dec if decoupled == 0 & time_diff_from_end_5min == 960 // Little variability
 
-        collapse (sum) intervention_dummy, by(five_min_level_elapsed)
+	// FE: 
 
-        sum intervention_dummy
-        local max = r(max)
+	wildbootstrap reg energy_rebound_after_int_16h diff_set_f T_DHW_f avg_t_out_within_16h morning_f evening_f night_f i.hh_id if time_diff_from_end_5min == 960, cluster(hh_id) rseed(42) reps(100000)
 
-        replace intervention_dummy = intervention_dummy/`max'
-
-        gen normal_operation = 1 - intervention_dummy
-
-        twoway line intervention_dummy five_min_level_elapsed if five_min_level_elapsed < 2880 , sort lcolor(blue) ///
-            || line normal_operation five_min_level_elapsed if five_min_level_elapsed < 2880, sort lcolor(green) ///
-            aspectratio(1) xlabel(0 "0" 360 "6" 720 "12" 1080 "18" 1440 "24" 1800 "30" 2160 "36" 2520 "42" 2880 "48") xtitle("Time to flexibility event start (h)") ///
-            ytitle("Average share of HPs") graphregion(color(white) margin(zero))  xsize(8) ysize(8) legend(order(1 "Blocked" 2 "Unblocked" ) cols(2) pos(6) size(medsmall))
-
-        graph export "Share_blocked_unblocked.pdf", replace
-
-    restore
-	
-preserve
-
-keep if after == 1
-
-gen diff = hp_p - avg_cf_hp_p_spec
-
-collapse (mean) diff (semean) sem_diff = diff, by(five_min_level_elapsed intervention_dummy)
-
-gen ul_diff = diff + 1.96 * sem_diff
-gen ll_diff = diff - 1.96 * sem_diff
-
-// Smoothing the CI: 
-
-capture drop ul_diff_sm_block ll_diff_sm_block
-capture drop ul_diff_sm_unblock ll_diff_sm_unblock 
-
-//// Blocked:
-
-    // UL:
-
-    lpoly ul_diff five_min_level_elapsed if intervention_dummy == 1, gen(ul_diff_sm_block) at(five_min_level_elapsed) degree(0)
-    save temp_dataset, replace
-    merge m:m five_min_level_elapsed using temp_dataset, keepusing(ul_diff_sm_block)
-    drop _merge
-
-    // LL:
- 
-    lpoly ll_diff five_min_level_elapsed if intervention_dummy == 1, gen(ll_diff_sm_block) at(five_min_level_elapsed) degree(0)
-    save temp_dataset, replace
-    merge m:m five_min_level_elapsed using temp_dataset, keepusing(ll_diff_sm_block)
-    drop _merge
-
-//// Unblocked:
-
-    // UL:
-
-    lpoly ul_diff five_min_level_elapsed if intervention_dummy == 0, gen(ul_diff_sm_unblock) at(five_min_level_elapsed) degree(0)
-    save temp_dataset, replace
-    merge m:m five_min_level_elapsed using temp_dataset, keepusing(ul_diff_sm_unblock)
-    drop _merge
-
-    // LL:
- 
-    lpoly ll_diff five_min_level_elapsed if intervention_dummy == 0, gen(ll_diff_sm_unblock) at(five_min_level_elapsed) degree(0)
-    save temp_dataset, replace
-    merge m:m five_min_level_elapsed using temp_dataset, keepusing(ll_diff_sm_unblock)
-    drop _merge
-
-
-// Plot: 
-
-twoway lpoly diff five_min_level_elapsed if intervention_dummy == 1, clcolor(blue) ///
-    || rarea ul_diff_sm_block ll_diff_sm_block five_min_level_elapsed if intervention_dummy == 1, sort fcolor(blue%30) lcolor(blue%0) ///
-    || lpoly diff five_min_level_elapsed if intervention_dummy == 0, clcolor(green) ///
-    || rarea ul_diff_sm_unblock ll_diff_sm_unblock five_min_level_elapsed if intervention_dummy == 0, sort fcolor(green%30) lcolor(green%0) ///
-    aspectratio(1) xlabel(0 "0" 360 "6" 720 "12" 1080 "18" 1440 "24" 1800 "30" 2160 "36" 2520 "42" 2880 "48") xtitle("Time to intervention start (h)") ylabel(-800(100)500) yline(0, lwidth(thin) lcolor(gray))  ///
-    ytitle("Average energy consumption" "per event and HP in the fleet (W)") graphregion(color(white) margin(zero))  xsize(8) ysize(8) legend(order(1 "Blocked" 3 "Unblocked" ) cols(2) pos(6) size(medsmall))
-
-graph export "Power_blocked_unblocked.pdf", replace
-
-// Similar plot with just the unblocked ones: 
-
-twoway lpoly diff five_min_level_elapsed if intervention_dummy == 0, clcolor(green) ///
-    || rarea ul_diff_sm_unblock ll_diff_sm_unblock five_min_level_elapsed if intervention_dummy == 0, sort fcolor(green%30) lcolor(green%0) ///
-    aspectratio(1) xlabel(0 "0" 360 "6" 720 "12" 1080 "18" 1440 "24" 1800 "30" 2160 "36" 2520 "42" 2880 "48") xtitle("Time to intervention start (h)") ylabel(-300(50)450) yline(0, lwidth(thin) lcolor(gray))  ///
-    ytitle("Average energy consumption" "per event and HP in the fleet (W)") graphregion(color(white) margin(zero))  xsize(8) ysize(8) legend(order(1 "Unblocked" ) cols(2) pos(6) size(medsmall))
-
-graph export "Power_unblocked.pdf", replace
-
-
-// Intensity of rebound 
-di "Rebound (resp. first 18h, first 36h, between 18-36h)"
-ci means diff if intervention_dummy == 0 & five_min_level_elapsed < 1080 // First 18 hours 
-ci means diff if intervention_dummy == 0 & five_min_level_elapsed < 2160 // First 36 hours 
-ci means diff if intervention_dummy == 0 & five_min_level_elapsed > 1080 & five_min_level_elapsed < 2160 // Between 18 - 36 hours 
-
-// Intensity of reduction
-di "Reduction (resp. first 18h, first 36h, between 18-36h)"
-ci means diff if intervention_dummy == 1 & five_min_level_elapsed < 1080 // First 18 hours 
-ci means diff if intervention_dummy == 1 & five_min_level_elapsed < 2160 // First 36 hours 
-ci means diff if intervention_dummy == 1 & five_min_level_elapsed > 1080 & five_min_level_elapsed < 2160 // Between 18 - 36 hours 
-
-restore
-	
+	  
 end
 
 // End of file
