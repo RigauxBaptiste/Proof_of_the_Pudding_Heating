@@ -47,7 +47,7 @@ App_T6_T7_manual_over
 App_T8_reg_rebound_kWh
 end
 
-run_all // uncomment this line to run the whole program 
+// run_all // uncomment this line to run the whole program 
 
 ********************************************************************************
 * Table 1: Participants' characteristics									   *
