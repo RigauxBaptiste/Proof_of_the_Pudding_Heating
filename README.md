@@ -3,6 +3,8 @@ Repository for data and code for Rigaux, Hamels and Ovaere (2024). "The Proof of
 
 November 2024
 
+Working paper accessible at: 
+
 Contact: baptiste.rigaux@ugent.be
 
 ## Data:
@@ -29,8 +31,6 @@ Contact: baptiste.rigaux@ugent.be
 4. Run each program separately, or alternatively compile and use the 'run_all' program.
 
 ## References:
-
-(*) Paper soon to be publicly accessible.
 
 (**) Royal Meteorological Institute of Belgium. (2024). Open Data - Royal Meteorological Institute of Belgium
 [Accessed: 29 July 2024]. https://opendata.meteo.be/ 
