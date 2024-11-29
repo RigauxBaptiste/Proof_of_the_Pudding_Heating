@@ -15,7 +15,7 @@ program drop _all
 set more off
 
 * Directory:
-cd "C:\Users\brigaux\OneDrive - UGent\Desktop\FlexSys Analysis\Final Analysis FlexSys field exp paper\Replication\"
+cd "C:\Users\" // Change this with your directory
 
 * This .do file runs each of the results for the paper. To see the results of just one part, select it in the list below and run it.
 * Note that the program 'experiment_data_preparation' is necessary for all other programs below it. 
