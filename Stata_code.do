@@ -34,9 +34,9 @@ F3_histogram_kWh_saved // Figure 3
 F4_rebound_post_inter // Figure 4 (both panels)
 F5_6_pow_cons_during_event // Figure 5 (both panels) and Figure 6
 F7_flex_event_temp // Figure 7 (all panels) and Figure 8 
-F8_both_panels // Figure 9 (both panels) ; using the dataset built from the Python code
+F8_both_panels // Figure 8 (both panels) ; using the dataset outputted by the Python code (but already included in the archive for convenience)
 F9_hist_temp_drop // Figure 9
-Study_manual_overrules // Comment in the text: timing of manual overrules + evidence of few manual overrules later in the heating season
+Study_manual_overrules // Comment in the text: timing of manual overrules + evidence of fewer manual overrules later in the heating season
 // Appendices: 
 App_F10_hist_pow_temp 
 App_F11_pow
