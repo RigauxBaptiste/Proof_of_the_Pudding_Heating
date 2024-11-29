@@ -36,5 +36,4 @@ Contact: baptiste.rigaux@ugent.be
 [Accessed: 29 July 2024]. https://opendata.meteo.be/ 
 
 (***) European Network of Transmission System Operators for Electricity. (2024). Day-Ahead Prices Trans-
-parency [Accessed: 29 July 2024]. https : / / transparency. entsoe . eu / transmission - domain / r2 /
-dayAheadPrices/show
+parency [Accessed: 29 July 2024]. https://transparency.entsoe.eu/transmission-domain/r2/dayAheadPrices/show
