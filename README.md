@@ -12,7 +12,7 @@ Contact: baptiste.rigaux@ugent.be
 
 ## Code: 
 - 'Stata_code.do': a Stata '.do' file preparing the data and plotting the figures and tables of the paper.
-- 'Building_dataset_monetary_valuation_flex_event.py': a Python '.py' file taking four datasets ('df_hourly_energy_reduction_bin_*.csv') outputted by 'Stata_code.do' as an input. It returns 'money_shifted_heterogeneous.csv' as an output. In turns, 'money_shifted_heterogeneous.csv' is used in 'Stata_code.do' for plotting the tables relative to the monetary valuation of flexibility events. For convenience, 'money_shifted_heterogeneous.csv' is already included in the repository.
+- 'Building_dataset_monetary_valuation_flex_event.py': a Python '.py' file taking four datasets ('df_hourly_energy_reduction_bin_*.csv') outputted by 'Stata_code.do' as an input. It returns 'money_shifted_heterogeneous.csv' as an output. In turns, 'money_shifted_heterogeneous.csv' is used in 'Stata_code.do' for plotting the tables relative to the monetary valuation of flexibility events. For convenience, 'money_shifted_heterogeneous.csv' is already included in the repository. That way, the whole analysis can be conducted just using the 'Stata_code.do' file.
 
 ## Output: 
 - Three .tex files corresponding to the three panels of Table 1 (further formatted in the paper).
