@@ -22,7 +22,7 @@ Contact: baptiste.rigaux@ugent.be
 
 ## How to reproduce the paper results?
 
-1. Download the GitHub archive
-2. Extract it and extract the ZIP files
-3. Open the Stata_code.do file, change the directory and compile the programs (lines 12-18 first and 54-2897 second)
-4. Run each program separately, or alternatively compile and use the 'run_all' program
+1. Download the GitHub archive.
+2. Extract it and extract the ZIP files.
+3. Open the Stata_code.do file, change the directory and compile the programs (lines 12-18 first and 54-2897 second).
+4. Run each program separately, or alternatively compile and use the 'run_all' program.
