@@ -35,5 +35,4 @@ Contact: baptiste.rigaux@ugent.be
 (**) Royal Meteorological Institute of Belgium. (2024). Open Data - Royal Meteorological Institute of Belgium
 [Accessed: 29 July 2024]. https://opendata.meteo.be/ 
 
-(***) European Network of Transmission System Operators for Electricity. (2024). Day-Ahead Prices Trans-
-parency [Accessed: 29 July 2024]. https://transparency.entsoe.eu/transmission-domain/r2/dayAheadPrices/show
+(***) European Network of Transmission System Operators for Electricity. (2024). Day-Ahead Prices Transparency [Accessed: 29 July 2024]. https://transparency.entsoe.eu/transmission-domain/r2/dayAheadPrices/show
