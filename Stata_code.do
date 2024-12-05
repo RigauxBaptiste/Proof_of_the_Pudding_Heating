@@ -1502,7 +1502,7 @@ preserve
     drop at_values
 
     //  Plot the graph
-    twoway lpoly power_reduction five_min_level_elapsed, bw(`bw_power') clcolor(orange) yline(0) ///
+    twoway lpoly power_reduction five_min_level_elapsed, clcolor(orange) yline(0) ///
         || rarea ul_power_reduction_sm ll_power_reduction_sm five_min_level_elapsed, sort color(orange%30) lcolor(orange%0) ///
        xlabel(0 "0" 360 "6" 720 "12" 1080 "18" 1440 "24" 1800 "30" 2160 "36" 2520 "42" 2880 "48") ylabel(-200(50)300) ///
         xtitle("Time to flexibility event start (h)") ytitle("Average HP power reduction in the fleet (W)") legend(order(1 "Average across interventions" 2 "95% CI" ) cols(2) pos(6) size(small)) ///
