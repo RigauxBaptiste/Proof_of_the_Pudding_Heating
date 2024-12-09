@@ -1,7 +1,7 @@
 ********************************************************************************
 *               The Proof of the Pudding is in the Heating:                    *
 *    a Field Experiment on Household Engagement with Heat Pump Flexibility     *
-*                             November 2024       							   *
+*                             December 2024       							   *
 *            Baptiste Rigaux°, Sam Hamels° and Marten Ovaere°                  *
 *         ° Department of Economics, Ghent University (Belgium)                *
 ********************************************************************************
