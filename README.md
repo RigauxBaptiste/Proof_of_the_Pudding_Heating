@@ -1,11 +1,9 @@
 # Proof_of_the_Pudding_Heating
 Repository for data and code for Rigaux, Hamels and Ovaere (2024). "The Proof of the Pudding is in the Heating: a Field Experiment on Household Engagement with Heat Pump Flexibility" (*)
 
-This repository has been made public for the reproduction of results on GitHub: https://github.com/RigauxBaptiste/Proof_of_the_Pudding_Heating.git 
-
 December 2024
 
-Working paper accessible at: [Soon-to-be-added]
+(*) Working paper accessible at: [Soon-to-be-added]
 
 Contact: baptiste.rigaux@ugent.be
 
@@ -39,3 +37,6 @@ Contact: baptiste.rigaux@ugent.be
 [Accessed: 29 July 2024]. https://opendata.meteo.be/ 
 
 (***) European Network of Transmission System Operators for Electricity. (2024). Day-Ahead Prices Transparency [Accessed: 29 July 2024]. https://transparency.entsoe.eu/transmission-domain/r2/dayAheadPrices/show
+
+
+This repository has been made public for the reproduction of results on GitHub: https://github.com/RigauxBaptiste/Proof_of_the_Pudding_Heating.git
