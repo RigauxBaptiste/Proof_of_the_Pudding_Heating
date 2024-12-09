@@ -22,9 +22,9 @@ potential_b36             = pd.read_csv(path + "df_hourly_energy_reduction_bin_2
 potential_b69             = pd.read_csv(path + "df_hourly_energy_reduction_bin_3.csv", delimiter = ",", dtype={3: str}, encoding='utf-8')
 potential_ab9             = pd.read_csv(path + "df_hourly_energy_reduction_bin_4.csv", delimiter = ",", dtype={3: str}, encoding='utf-8')
 
-dam_prices_data           = pd.read_csv(path + "Final Analysis FlexSys field exp paper/Data/Other data/" + "DAM_prices.csv", delimiter = ",", dtype={3: str}, encoding='utf-8')
+dam_prices_data           = pd.read_csv(path + "DAM_prices.csv", delimiter = ",", dtype={3: str}, encoding='utf-8')
 
-weather_data = pd.read_csv(path + "Final Analysis FlexSys field exp paper/Data/Weather data Melle/" + "synop_data.csv", delimiter = ",", dtype={3: str}, encoding='utf-8')
+weather_data = pd.read_csv(path + "synop_data.csv", delimiter = ",", dtype={3: str}, encoding='utf-8')
 
 # Only work within HS1 and HS2 window (defined as the first/last intervention minus/plus one week)
 
