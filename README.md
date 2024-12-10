@@ -3,7 +3,7 @@ Repository for data and code for Rigaux, Hamels and Ovaere (2024). "The Proof of
 
 December 2024
 
-(*) Working paper accessible at: [Soon-to-be-added]
+(*) Working paper accessible at: https://wps-feb.ugent.be/Papers/wp_24_1101.pdf 
 
 Contact: baptiste.rigaux@ugent.be
 
