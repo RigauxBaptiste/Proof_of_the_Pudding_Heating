@@ -3,7 +3,7 @@ Repository for data and code for Rigaux, Hamels and Ovaere (2024). "The Proof of
 
 December 2024
 
-(*) Working paper accessible at: https://wps-feb.ugent.be/Papers/wp_24_1101.pdf 
+(*) Baptiste Rigaux & Sam Hamels & Marten Ovaere, 2024. "The Proof of the Pudding is in the Heating: A Field Experiment on Household Engagement with Heat Pump Flexibility," Working Papers of Faculty of Economics and Business Administration, Ghent University, Belgium 24/1101, Ghent University, Faculty of Economics and Business Administration. Accessible at: https://ideas.repec.org/p/rug/rugwps/24-1101.html 
 
 Contact: baptiste.rigaux@ugent.be
 
